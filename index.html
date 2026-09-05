@@ -119,6 +119,11 @@ body {
 }
 .budget-total .bt-label { font-size:12px; font-weight:600; color:var(--mint-dark); }
 .budget-total .bt-value { font-size:14px; font-weight:700; color:var(--ink); font-family:"SF Mono","Menlo",monospace; }
+/* 徽章警示态（如「从未备份」「欠款」）：珊瑚色 */
+.budget-total.coral {
+  background:linear-gradient(135deg, #FDEBE4, #fff); border-color:var(--danger);
+}
+.budget-total.coral, .budget-total.coral .bt-value { color:var(--danger); }
 /* 自动保存状态条 */
 .save-bar {
   max-width:560px; margin:8px auto 0; padding:6px 14px;
@@ -899,6 +904,62 @@ tbody tr.no-spend .row-total {
 .assets-proj .proj-note { font-size:11px; color:var(--ink-2); margin-top:4px; }
 .assets-empty { color:var(--ink-3); font-size:12px; padding:4px 2px 0; line-height:1.8; }
 .assets-comply { margin-top:14px; font-size:10.5px; color:var(--ink-3); }
+
+/* ── 数据保险箱（v8.12）────────────────────────── */
+.backup-status {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:11px 14px; border-radius:14px; margin-bottom:12px;
+  background:linear-gradient(135deg,#EAF7F1,#fff); border:1px solid #CFEDE0;
+}
+.backup-status.stale { background:linear-gradient(135deg,#FDEFE9,#fff); border-color:#F4CDBF; }
+.backup-status.never { background:linear-gradient(135deg,#FDF3E3,#fff); border-color:#EFD9AE; }
+.backup-status .bs-icon { font-size:20px; }
+.backup-status .bs-main { flex:1; min-width:150px; }
+.backup-status .bs-title { font-size:13px; font-weight:700; color:var(--ink); }
+.backup-status .bs-sub { font-size:11px; color:var(--ink-2); margin-top:2px; line-height:1.6; }
+.backup-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.backup-actions .bk-btn {
+  flex:1 1 150px; min-height:44px; border-radius:14px; cursor:pointer;
+  border:1.5px solid var(--line); background:#fff; color:var(--ink);
+  font-size:13px; font-weight:700; font-family:inherit;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  transition:border-color .18s, background .18s, transform .12s;
+}
+.backup-actions .bk-btn:hover { border-color:var(--mint-dark); background:var(--mint-soft); }
+.backup-actions .bk-btn:active { transform:scale(.98); }
+.backup-actions .bk-btn.primary { border-color:var(--mint); background:var(--mint-soft); color:var(--mint-dark); }
+.backup-actions .bk-btn.on { border-color:var(--mint-dark); background:var(--mint); color:#fff; }
+.backup-note {
+  font-size:11px; color:var(--ink-2); line-height:1.85;
+  background:var(--cream-2, #FBF6EE); border-radius:12px; padding:10px 12px;
+  border:1px dashed var(--line);
+}
+.backup-note b { color:var(--ink); }
+.backup-file-row {
+  display:flex; align-items:center; gap:8px; margin-top:8px;
+  font-size:11.5px; color:var(--mint-dark); font-weight:600;
+  background:#F2FBF7; border:1px solid #CFEDE0; border-radius:10px; padding:8px 11px;
+}
+.backup-file-row .bf-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.backup-trash { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }
+.backup-trash-head {
+  display:flex; align-items:center; gap:8px; cursor:pointer;
+  font-size:12px; font-weight:700; color:var(--ink);
+}
+.backup-trash-head .bt-count {
+  font-size:10px; font-weight:700; padding:1px 7px; border-radius:8px;
+  background:var(--mint-soft); color:var(--mint-dark);
+}
+.backup-trash-head .bt-caret { font-size:10px; color:var(--ink-3); }
+.backup-trash-list { margin-top:9px; display:flex; flex-direction:column; gap:8px; }
+.backup-trash-item {
+  display:flex; align-items:center; gap:9px; padding:9px 11px;
+  background:#fff; border:1px solid var(--line); border-radius:11px;
+}
+.backup-trash-item .ti-main { flex:1; min-width:0; }
+.backup-trash-item .ti-name { font-size:12px; font-weight:700; color:var(--ink); }
+.backup-trash-item .ti-meta { font-size:10.5px; color:var(--ink-3); margin-top:2px; }
+
 /* 里程碑庆祝浮层 */
 .celebrate-overlay {
   position:fixed; inset:0; z-index:2000; display:flex; align-items:center; justify-content:center;
@@ -1055,7 +1116,25 @@ tbody tr.no-spend .row-total {
     <div id="analyticsContent" data-page-node-id="W0rxjeqe1UbNLjohyDlukC"></div>
   </div>
 
-  <!-- ⑦ 提醒与待办（默认置底） -->
+  <!-- ⑦ 数据保险箱（防丢数据，默认在提醒待办之上） -->
+  <div class="card sortable-card" data-card="backup" id="backupCard"
+       ondragover="app.onCardDragOver(event)"
+       ondrop="app.onCardDrop(event,'backup')"
+       ondragend="app.onCardDragEnd(event)" data-page-node-id="bkCard001">
+    <div class="card-title sortable-handle" draggable="true" title="拖我可调整卡片顺序"
+         ondragstart="app.onCardDragStart(event,'backup')" data-page-node-id="bkTitle001">
+      <span class="icon" data-page-node-id="bkIcon001">🛡️</span> 数据保险箱
+      <span class="title-hint" data-page-node-id="bkHint001">（清缓存会丢数据，请定期备份）</span>
+      <span class="budget-total" id="backupBadge" data-page-node-id="bkBadge001"></span>
+      <span class="card-sort" data-page-node-id="bkSort001">
+        <button onclick="event.stopPropagation(); app.moveCard('backup',-1)" title="上移" data-page-node-id="bkUp001">↑</button>
+        <button onclick="event.stopPropagation(); app.moveCard('backup',1)" title="下移" data-page-node-id="bkDn001">↓</button>
+      </span>
+    </div>
+    <div id="backupBody" data-page-node-id="bkBody001"></div>
+  </div>
+
+  <!-- ⑧ 提醒与待办（默认置底） -->
   <div class="card sortable-card" data-card="todo"
        ondragover="app.onCardDragOver(event)"
        ondrop="app.onCardDrop(event,'todo')"
@@ -1167,10 +1246,11 @@ const TODO_TYPES = {
 
 // 卡片默认顺序（可拖动或点 ↑↓ 调整，存 ledger_layout_v1）
 // 默认：收入置顶、提醒与待办置底
-const CARD_ORDER_DEFAULT = ['income', 'budget', 'ledger', 'assets', 'summary', 'analytics', 'todo'];
+const CARD_ORDER_DEFAULT = ['income', 'budget', 'ledger', 'assets', 'summary', 'analytics', 'backup', 'todo'];
 const CARD_NAMES = {
   income:'本月收入与扣款', budget:'预算', ledger:'每日记账',
-  assets:'存款与外账', summary:'本月汇总', analytics:'统计分析', todo:'提醒与待办',
+  assets:'存款与外账', summary:'本月汇总', analytics:'统计分析',
+  backup:'数据保险箱', todo:'提醒与待办',
 };
 
 class LedgerApp {
@@ -1193,6 +1273,12 @@ class LedgerApp {
     this.assets = this._defaultAssets();
     this.assetsFormOpen = false;
     this.assetsEditId = null;
+    // 数据保险箱（v8.12）
+    this._backupHandle = null;
+    this._backupPerm = null;
+    this._autoBackupTimer = null;
+    this._trashOpen = false;
+    this._pendingImportMode = 'merge';
     this.loadData();
     this.loadTodos();
     this.loadAssets();
@@ -1207,6 +1293,13 @@ class LedgerApp {
     });
     // 关闭/刷新前兜底保存，防止正在输入未失焦时丢失
     window.addEventListener('beforeunload', () => { this.saveData(); this.saveAssets(); });
+    // 数据保险箱：恢复自动备份连接；本地为空而备份文件有数据时提示恢复
+    this.initBackupLink();
+    // 超过 7 天没备份，进页面时提醒一次
+    const _d = this._daysSinceBackup();
+    if (_d !== null && _d > 7) {
+      setTimeout(() => this.showToast(`已经 ${_d} 天没备份了，去「🛡️ 数据保险箱」备份一下吧`), 1600);
+    }
   }
 
   get storageKey() { return `ledger_v2_${this.year}_${String(this.month).padStart(2,'0')}`; }
@@ -1356,6 +1449,7 @@ class LedgerApp {
     };
     localStorage.setItem(this.storageKey, JSON.stringify(data));
     this.updateSaveStatus();
+    this._scheduleAutoBackup();
   }
 
   // 关闭/刷新前兜底：把正在编辑但未失焦的输入框写入模型，避免丢失
@@ -1384,7 +1478,8 @@ class LedgerApp {
     const el = document.getElementById('saveStatus');
     if (!el) return;
     const t = new Date().toLocaleTimeString('zh-CN', { hour12:false });
-    el.innerHTML = `💾 已自动保存 · <b>${t}</b> · 数据存于本机浏览器（localStorage）`;
+    const bk = (typeof this._backupTimeText === 'function') ? this._backupTimeText() : '';
+    el.innerHTML = `💾 已自动保存 · <b>${t}</b> · 数据存于本机浏览器（localStorage）${bk ? ` · 🛡️ ${bk}` : ''}`;
   }
 
   setMonth(delta) {
@@ -2098,6 +2193,7 @@ class LedgerApp {
     this.renderAssets();
     this.renderSummary();
     this.renderAnalytics();
+    this.renderBackupCard();
   }
 
   switchView(mode) {
@@ -2352,6 +2448,7 @@ class LedgerApp {
   saveTodos() {
     localStorage.setItem(this.todosKey, JSON.stringify({ todos: this.todos }));
     this.updateSaveStatus();
+    this._scheduleAutoBackup();
   }
 
   // 到期日：周期性事项按月换算（2 月 31 号自动取当月最后一天）
@@ -2737,6 +2834,7 @@ class LedgerApp {
     this.flushAssetsInput();
     localStorage.setItem(this.assetsKey, JSON.stringify(this.assets));
     this.updateSaveStatus();
+    this._scheduleAutoBackup();
   }
 
   // 编辑框失焦前把值写回模型（与记账输入框同一机制）
@@ -3206,6 +3304,447 @@ class LedgerApp {
   saveLayout() {
     localStorage.setItem(this.layoutKey, JSON.stringify({ order: this.cardOrder }));
     this.updateSaveStatus();
+    this._scheduleAutoBackup();
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  数据保险箱（v8.12）
+  //  目标：账目只存在浏览器里，清缓存 / 换设备就会丢。
+  //        三层防护：① 手动导出下载  ② 自动写入本地文件  ③ 回收站可还原
+  // ══════════════════════════════════════════════════════════
+
+  get metaKey()  { return 'ledger_backup_meta_v1'; }
+  get trashKey() { return 'ledger_trash_v1'; }
+
+  _globalBackupKeys() { return ['ledger_todos_v1', 'ledger_layout_v1', 'ledger_assets_v1']; }
+
+  /** 收集全部需要备份的键：所有月份账目 + 3 个跨月全局键 */
+  _collectBackupKeys() {
+    const keys = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (/^ledger_v2_\d{4}_\d{2}$/.test(k)) keys[k] = localStorage.getItem(k);
+      }
+      this._globalBackupKeys().forEach(k => {
+        const v = localStorage.getItem(k);
+        if (v != null) keys[k] = v;
+      });
+    } catch (e) { /* 存储不可用时返回已收集部分 */ }
+    return keys;
+  }
+
+  _buildBackupPayload() {
+    return {
+      app: '月记账本',
+      backupVersion: 1,
+      exportedAt: new Date().toISOString(),
+      exportedBy: 'v8.12',
+      keys: this._collectBackupKeys()
+    };
+  }
+
+  /** 统计一份备份里到底有什么，用于给用户看「我备份了什么」 */
+  _countBackupContent(payload) {
+    const keys = (payload && payload.keys) || {};
+    const monthList = Object.keys(keys).filter(k => /^ledger_v2_\d{4}_\d{2}$/.test(k)).sort();
+    let todos = 0, debts = 0;
+    try { const t = JSON.parse(keys['ledger_todos_v1'] || '{}'); todos = (t.todos || []).length; } catch (e) {}
+    try { debts = (JSON.parse(keys['ledger_assets_v1'] || '{}').debts || []).length; } catch (e) {}
+    return { months: monthList.length, monthList, todos, debts, keys: Object.keys(keys).length };
+  }
+
+  _downloadFile(filename, text, mime) {
+    try {
+      const blob = new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // ── ① 手动导出 ────────────────────────────────
+  exportBackup() {
+    const payload = this._buildBackupPayload();
+    const info = this._countBackupContent(payload);
+    if (info.keys === 0) { this.showToast('还没有可备份的数据'); return; }
+    const d = new Date();
+    const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const ok = this._downloadFile(`记账本备份_${stamp}.json`, JSON.stringify(payload, null, 2), 'application/json');
+    if (!ok) { alert('下载失败，请换个浏览器再试（推荐 Chrome / Edge）。'); return; }
+    this._markBackedUp('manual');
+    this.renderBackupCard();
+    this.showToast(`已备份 ${info.months} 个月账目 · 存好这个文件 💾`);
+  }
+
+  // ── ② 导入恢复 ────────────────────────────────
+  importBackup(mode) {
+    this._pendingImportMode = mode || 'merge';
+    const input = document.getElementById('backupImportInput');
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }
+
+  async handleBackupFile(file) {
+    if (!file) return;
+    let payload;
+    try {
+      payload = JSON.parse(await file.text());
+    } catch (e) {
+      alert('这个文件读不出内容（不是有效的 JSON）。\n\n请选择由「📤 立即备份」生成的备份文件。');
+      return;
+    }
+    if (!payload || !payload.keys || typeof payload.keys !== 'object') {
+      alert('这不是记账本的备份文件（里面没有 keys 字段）。\n\n请选择文件名形如「记账本备份_2026-09-05.json」的文件。');
+      return;
+    }
+    const info = this._countBackupContent(payload);
+    if (info.keys === 0) { alert('这个备份文件里没有任何数据。'); return; }
+
+    const mode = this._pendingImportMode || 'merge';
+    const when = payload.exportedAt ? new Date(payload.exportedAt).toLocaleString('zh-CN') : '未知时间';
+    const summary =
+      `备份文件：${file.name}\n` +
+      `导出时间：${when}\n` +
+      `包含内容：${info.months} 个月账目 · 待办 ${info.todos} 条 · 存款外账 ${info.debts} 笔\n`;
+
+    if (mode === 'replace') {
+      const cur = this._countBackupContent(this._buildBackupPayload());
+      if (!confirm(
+        summary + `\n「覆盖恢复」会用备份文件替换当前浏览器的全部数据。\n` +
+        `（当前 ${cur.months} 个月账目会先存入回收站，还能还原）\n\n确定继续吗？`
+      )) return;
+    } else {
+      if (!confirm(
+        summary + `\n「合并恢复」只补充本地没有的数据，不会改动你现有的任何记录。\n\n确定导入吗？`
+      )) return;
+    }
+    this._applyBackup(payload, mode);
+  }
+
+  _applyBackup(payload, mode) {
+    const keys = payload.keys || {};
+    if (mode === 'replace') {
+      const cur = this._buildBackupPayload();
+      if (Object.keys(cur.keys).length > 0) this._trashPush('导入前的全部数据', cur.keys);
+    }
+    let added = 0, replaced = 0, skipped = 0;
+    Object.entries(keys).forEach(([k, v]) => {
+      const has = localStorage.getItem(k) != null;
+      if (mode === 'merge' && has) { skipped++; return; }
+      localStorage.setItem(k, v);
+      has ? replaced++ : added++;
+    });
+    this._markBackedUp('import');
+    this.loadData(); this.loadTodos(); this.loadAssets(); this.loadLayout();
+    this.applyCardOrder();
+    this.render();
+    const tail = mode === 'replace' ? `新增 ${added} 项、替换 ${replaced} 项` : `新增 ${added} 项、跳过已有 ${skipped} 项`;
+    this.showToast(`${mode === 'replace' ? '覆盖恢复' : '合并恢复'}完成：${tail} ✅`);
+  }
+
+  // ── ③ 自动备份到本地文件（File System Access API）────────
+  _fsSupported() { return typeof window.showSaveFilePicker === 'function'; }
+
+  async connectBackupFile() {
+    if (!this._fsSupported()) {
+      alert(
+        '当前浏览器不支持「自动备份到文件」。\n\n' +
+        '请用上面的「📤 立即备份」把文件存下来。\n\n' +
+        '（电脑版 Chrome / Edge 支持自动备份；iPhone 上的浏览器暂不支持）'
+      );
+      return;
+    }
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: '记账本自动备份.json',
+        types: [{ description: 'JSON 备份文件', accept: { 'application/json': ['.json'] } }]
+      });
+      this._backupHandle = handle;
+      await this._saveHandle(handle);
+      const ok = await this.writeBackupFile(false);
+      if (ok) this.showToast('已连接！以后每次记账会自动写进这个文件 🔗');
+      this._backupPerm = 'granted';
+      this.renderBackupCard();
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;   // 用户主动取消，不打扰
+      console.warn('connectBackupFile', e);
+      this.showToast('连接失败：' + (e && e.message ? e.message : '未知错误'));
+    }
+  }
+
+  async writeBackupFile(silent) {
+    if (!this._backupHandle) return false;
+    try {
+      if (!(await this._ensureHandlePermission(this._backupHandle))) {
+        this._backupPerm = 'prompt';
+        if (!silent) this.showToast('还没有文件权限，请点「🔗 重新授权」');
+        return false;
+      }
+      const w = await this._backupHandle.createWritable();
+      await w.write(JSON.stringify(this._buildBackupPayload(), null, 2));
+      await w.close();
+      this._backupPerm = 'granted';
+      this._markBackedUp('auto');
+      return true;
+    } catch (e) {
+      console.warn('writeBackupFile', e);
+      if (!silent) this.showToast('自动备份写入失败：' + (e && e.message ? e.message : '未知错误'));
+      return false;
+    }
+  }
+
+  async _ensureHandlePermission(handle) {
+    try {
+      const opts = { mode: 'readwrite' };
+      if (await handle.queryPermission(opts) === 'granted') return true;
+      if (await handle.requestPermission(opts) === 'granted') return true;
+    } catch (e) { /* 非用户手势时会抛错，静默失败 */ }
+    return false;
+  }
+
+  /** 存 handle 用；浏览器不支持 IndexedDB（隐私模式等）时静默降级为「本次会话内有效」 */
+  _handleDB() {
+    return new Promise((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') { reject(new Error('IndexedDB unavailable')); return; }
+      const req = indexedDB.open('ledger_backup_db', 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore('handles'); } catch (e) {} };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async _saveHandle(handle) {
+    try {
+      const db = await this._handleDB();
+      await new Promise((res, rej) => {
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(handle, 'auto');
+        tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+      });
+      localStorage.setItem('ledger_backup_linked_v1', '1');
+    } catch (e) {
+      // 存不下 handle 只是下次打开要重新连接，不影响本次自动备份，静默处理
+      try { localStorage.setItem('ledger_backup_linked_v1', '1'); } catch (e2) {}
+    }
+  }
+
+  async _loadHandle() {
+    try {
+      if (typeof indexedDB === 'undefined') return null;
+      const db = await this._handleDB();
+      return await new Promise(res => {
+        const tx = db.transaction('handles', 'readonly');
+        const r = tx.objectStore('handles').get('auto');
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+    } catch (e) { return null; }
+  }
+
+  /** 节流触发自动写入，避免每敲一个字就写一次文件 */
+  _scheduleAutoBackup() {
+    if (!this._backupHandle) return;
+    if (this._autoBackupTimer) clearTimeout(this._autoBackupTimer);
+    this._autoBackupTimer = setTimeout(() => {
+      this._autoBackupTimer = null;
+      this.writeBackupFile(true);
+    }, 4000);
+  }
+
+  /** 启动时恢复连接；若本地是空的而备份文件有数据，主动提示恢复 */
+  async initBackupLink() {
+    if (!this._fsSupported()) return;
+    if (localStorage.getItem('ledger_backup_linked_v1') !== '1') return;
+    const handle = await this._loadHandle();
+    if (!handle) return;
+    this._backupHandle = handle;
+    try {
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      this._backupPerm = perm;
+    } catch (e) { this._backupPerm = 'prompt'; }
+    if (this._backupPerm === 'granted') await this._tryAutoRestore();
+    this.renderBackupCard();
+  }
+
+  async _tryAutoRestore() {
+    const localKeys = Object.keys(this._collectBackupKeys());
+    if (localKeys.length > 0) return;   // 本地有数据，不打扰
+    let payload;
+    try {
+      const file = await this._backupHandle.getFile();
+      payload = JSON.parse(await file.text());
+    } catch (e) { return; }
+    const info = this._countBackupContent(payload);
+    if (info.keys === 0) return;
+    const ok = confirm(
+      `检测到你的备份文件里有 ${info.months} 个月的账目，但当前浏览器里是空的。\n\n` +
+      `是不是刚清理过浏览器缓存？点「确定」立刻恢复回来。`
+    );
+    if (ok) this._applyBackup(payload, 'merge');
+  }
+
+  // ── ④ 回收站：误删可还原 ──────────────────────
+  _loadTrash() {
+    try {
+      const list = JSON.parse(localStorage.getItem(this.trashKey) || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+
+  _trashPush(label, keysObj) {
+    try {
+      const list = this._loadTrash();
+      list.unshift({ id: 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), label, at: new Date().toISOString(), keys: keysObj });
+      localStorage.setItem(this.trashKey, JSON.stringify(list.slice(0, 5)));
+    } catch (e) { console.warn('trashPush', e); }
+  }
+
+  toggleTrash() { this._trashOpen = !this._trashOpen; this.renderBackupCard(); }
+
+  restoreTrash(id) {
+    const list = this._loadTrash();
+    const item = list.find(t => t.id === id);
+    if (!item) return;
+    if (!confirm(`确定还原「${item.label}」吗？\n\n会以回收站里这份为准，覆盖当前同名数据。`)) return;
+    Object.entries(item.keys || {}).forEach(([k, v]) => localStorage.setItem(k, v));
+    localStorage.setItem(this.trashKey, JSON.stringify(list.filter(t => t.id !== id)));
+    this.loadData(); this.loadTodos(); this.loadAssets(); this.loadLayout();
+    this.applyCardOrder();
+    this.render();
+    this.showToast(`「${item.label}」已还原 ✅`);
+  }
+
+  // ── ⑤ 备份时间与提醒 ──────────────────────────
+  _loadBackupMeta() {
+    try { return JSON.parse(localStorage.getItem(this.metaKey) || '{}'); } catch (e) { return {}; }
+  }
+
+  _markBackedUp(kind) {
+    try {
+      const meta = this._loadBackupMeta();
+      meta.lastAt = new Date().toISOString();
+      meta.kind = kind;
+      meta.count = (meta.count || 0) + 1;
+      localStorage.setItem(this.metaKey, JSON.stringify(meta));
+    } catch (e) {}
+    this.updateSaveStatus();
+  }
+
+  _daysSinceBackup() {
+    const meta = this._loadBackupMeta();
+    if (!meta.lastAt) return null;
+    const diff = Date.now() - new Date(meta.lastAt).getTime();
+    return Math.max(0, Math.floor(diff / 86400000));
+  }
+
+  _backupTimeText() {
+    const days = this._daysSinceBackup();
+    if (days === null) return '从未备份';
+    if (days === 0) return '今天已备份';
+    if (days === 1) return '昨天备份';
+    return `${days} 天前备份`;
+  }
+
+  // ── ⑥ 渲染 ────────────────────────────────────
+  renderBackupCard() {
+    const body = document.getElementById('backupBody');
+    const badge = document.getElementById('backupBadge');
+    if (!body) return;
+
+    const days = this._daysSinceBackup();
+    let cls = 'backup-status', icon = '🛡️', title = '', sub = '';
+    if (days === null) {
+      cls += ' never'; icon = '⚠️';
+      title = '还没备份过';
+      sub = '现在点一下「立即备份」，以后清缓存也不怕了。';
+    } else if (days > 7) {
+      cls += ' stale'; icon = '⏰';
+      title = `已经 ${days} 天没备份了`;
+      sub = '账目只存在这台设备的浏览器里，建议现在备份一次。';
+    } else {
+      icon = '✅';
+      title = this._backupTimeText();
+      sub = '清理浏览器缓存、换手机前，记得先备份。';
+    }
+
+    if (badge) {
+      const txt = this._backupTimeText();
+      badge.textContent = txt;
+      badge.className = 'budget-total' + (days === null || days > 7 ? ' coral' : '');
+      badge.title = '上次备份时间';
+    }
+
+    const fsOk = this._fsSupported();
+    const linked = !!this._backupHandle;
+    const autoLabel = linked
+      ? (this._backupPerm === 'granted' ? '🔗 自动备份已开启' : '🔗 重新授权自动备份')
+      : '🔗 自动备份到文件';
+
+    const fileRow = (fsOk && linked)
+      ? `<div class="backup-file-row">
+           <span>📁</span>
+           <span class="bf-name">${this._escapeHtml(this._backupHandle && this._backupHandle.name ? this._backupHandle.name : '已连接的备份文件')}</span>
+           <button class="mini-btn ok" onclick="app.writeBackupFile(false)">立即写入</button>
+         </div>`
+      : '';
+
+    const trash = this._loadTrash();
+    let trashHtml = '';
+    if (trash.length) {
+      const open = !!this._trashOpen;
+      trashHtml = `
+      <div class="backup-trash">
+        <div class="backup-trash-head" onclick="app.toggleTrash()">
+          <span>🗂️ 回收站</span>
+          <span class="bt-count">${trash.length}</span>
+          <span style="flex:1"></span>
+          <span class="bt-caret">${open ? '收起 ▲' : '展开 ▼'}</span>
+        </div>
+        ${open ? `<div class="backup-trash-list">${trash.map(t => `
+          <div class="backup-trash-item">
+            <div class="ti-main">
+              <div class="ti-name">${this._escapeHtml(t.label)}</div>
+              <div class="ti-meta">${new Date(t.at).toLocaleString('zh-CN')} · 共 ${Object.keys(t.keys || {}).length} 项</div>
+            </div>
+            <button class="mini-btn ok" onclick="app.restoreTrash('${t.id}')">↩️ 还原</button>
+          </div>`).join('')}</div>` : ''}
+      </div>`;
+    }
+
+    body.innerHTML = `
+      <div class="${cls}">
+        <span class="bs-icon">${icon}</span>
+        <div class="bs-main">
+          <div class="bs-title">${title}</div>
+          <div class="bs-sub">${sub}</div>
+        </div>
+      </div>
+      <div class="backup-actions">
+        <button class="bk-btn primary" onclick="app.exportBackup()">📤 立即备份</button>
+        <button class="bk-btn" onclick="app.importBackup('merge')">📥 合并恢复</button>
+        <button class="bk-btn" onclick="app.importBackup('replace')">🔄 覆盖恢复</button>
+        ${fsOk ? `<button class="bk-btn${linked ? ' on' : ''}" onclick="app.connectBackupFile()">${autoLabel}</button>` : ''}
+      </div>
+      <input type="file" id="backupImportInput" accept="application/json,.json"
+             style="display:none" onchange="app.handleBackupFile(this.files[0])">
+      ${fileRow}
+      <div class="backup-note">
+        💡 <b>为什么要备份</b>：账目只保存在这台设备的浏览器里。<b>清理浏览器缓存、换手机、换浏览器都会丢，而且找不回来。</b><br>
+        • <b>立即备份</b>：下载一个 .json 文件，存进手机「文件」/ 微信收藏 / 网盘，需要时能导回来。<br>
+        • <b>合并恢复</b>：只补本地没有的，<b>不动现有数据</b>（安全，优先用它）。<br>
+        • <b>覆盖恢复</b>：以备份文件为准整体替换，当前数据会先进回收站。<br>
+        ${fsOk
+          ? '• <b>自动备份</b>：选一个文件后，每次记账自动写入，几乎不用管。'
+          : '• <b>自动备份</b>：当前浏览器不支持（电脑版 Chrome / Edge 可用）。'}
+        <br>⚠️ <b>iPhone 用户特别注意</b>：用 Safari 且超过 7 天没打开，系统可能自动清掉数据。建议每周打开一次并备份。
+      </div>
+      ${trashHtml}
+    `;
   }
 
   applyCardOrder() {
@@ -3638,7 +4177,15 @@ class LedgerApp {
   }
 
   clearMonth() {
-    if (!confirm(`确定要清空 ${this.year}年${this.month}月 的所有数据吗？此操作不可恢复！`)) return;
+    if (!confirm(
+      `确定要清空 ${this.year}年${this.month}月 的所有数据吗？\n\n` +
+      `放心，清空前会自动存一份到「🛡️ 数据保险箱 → 回收站」，7 天内还能还原。`
+    )) return;
+
+    // 先落盘并压入回收站，保证误操作可还原
+    this.saveData();
+    const snapshot = localStorage.getItem(this.storageKey);
+    if (snapshot) this._trashPush(`${this.year}年${this.month}月`, { [this.storageKey]: snapshot });
 
     this.entries = {};
     for (let d = 1; d <= 31; d++) {
