@@ -908,9 +908,7 @@ tbody tr.no-spend .row-total {
 .assets-proj .proj-big { font-size:16px; font-weight:800; color:var(--ink); }
 .assets-proj.hug { background:linear-gradient(135deg, #FBF0E4, #fff); border-color:#EAD5BC; }
 .assets-proj.done { background:linear-gradient(135deg, #E9F7E2, #fff); border-color:#BFE3B0; }
-.assets-proj .proj-note { font-size:11px; color:var(--ink-2); margin-top:4px; }
 .assets-empty { color:var(--ink-3); font-size:12px; padding:4px 2px 0; line-height:1.8; }
-.assets-comply { margin-top:14px; font-size:10.5px; color:var(--ink-3); }
 
 /* ── 数据保险箱（v8.12）────────────────────────── */
 .backup-status {
@@ -1079,7 +1077,6 @@ tbody tr.no-spend .row-total {
     <div class="card-title sortable-handle" draggable="true" title="拖我可调整卡片顺序"
          ondragstart="app.onCardDragStart(event,'assets')" data-page-node-id="mB0OF3VD05hnrdf27m2kIv">
       <span class="icon" data-page-node-id="xgo8Bfokn4fUsE5FEZN5yl">🏦</span> 存款与外账
-      <span class="title-hint" data-page-node-id="J4XWvLGgAsiSYRdwK0PLzy">（跨月记录，不随月份清空 · 区块内点＋添加）</span>
       <span class="budget-total" id="assetsTotal" data-page-node-id="rrBHzfoaoP33jfkNKytqtZ"></span>
       <span class="card-sort" data-page-node-id="Oq0Pr81OFUHX4PuMSuORwr">
         <button onclick="event.stopPropagation(); app.moveCard('assets',-1)" title="上移" data-page-node-id="klBwzLAS92WiDf4WMxGM7b">↑</button>
@@ -2848,7 +2845,7 @@ class LedgerApp {
   flushAssetsInput() {
     const el = document.activeElement;
     if (!el || !el.id) return;
-    const fieldMap = { as_cur:'current', as_tgt:'target', as_name:'targetName', as_why:'targetWhy', as_plan:'monthlyPlan', as_repay:'repayMonthly' };
+    const fieldMap = { as_cur:'current', as_tgt:'target', as_name:'targetName', as_plan:'monthlyPlan', as_repay:'repayMonthly' };
     if (!(el.id in fieldMap)) return;
     const f = fieldMap[el.id];
     if (f === 'repayMonthly') this.assets.repayMonthly = el.value;
@@ -3006,7 +3003,8 @@ class LedgerApp {
     return { achieved: false, monthly, months, target: tgt, cur };
   }
 
-  // ── 情绪反馈（红线词避开：绝不出现"债务缠身/入不敷出/你还欠…"）──
+  // ── 情绪反馈文案库（v8.14 起卡片内默认不再展示长文案，仅保留供庆祝弹窗/后续复用）──
+  // 红线词避开：绝不出现"债务缠身/入不敷出/你还欠…"
   _tone(months, kind) {
     // kind: 'owe' 还账 ｜ 'save' 存款达标
     if (months === null) {
@@ -3074,46 +3072,40 @@ class LedgerApp {
     el.innerHTML = `
       <div class="assets-sec">
         <div class="assets-sec-title">💎 存款目标
-          <span class="sub">目标可以没有，但"为什么存"最好写下来</span>
           <span class="grow"></span>
         </div>
         <div class="assets-save-grid">
           <div class="as-field"><label>当前存款</label><input class="num" id="as_cur" type="number" step="0.01" min="0" value="${esc(sv.current)}" placeholder="0.00" onchange="app.setSavingsField('current',this.value)"></div>
-          <div class="as-field"><label>目标金额（留空=不设目标）</label><input class="num" id="as_tgt" type="number" step="0.01" min="0" value="${esc(sv.target)}" placeholder="留空即不设" onchange="app.setSavingsField('target',this.value)"></div>
-          <div class="as-field"><label>每月计划存</label><input class="num" id="as_plan" type="number" step="0.01" min="0" value="${esc(sv.monthlyPlan)}" placeholder="留空=按结余估算" onchange="app.setSavingsField('monthlyPlan',this.value)"></div>
-          <div class="as-field"><label>目标名字（如：洛晗的夏令营）</label><input id="as_name" value="${esc(sv.targetName)}" placeholder="给目标起个名字" onchange="app.setSavingsField('targetName',this.value)"></div>
-          <div class="as-field wide"><label>为什么想存这笔钱？</label><input id="as_why" value="${esc(sv.targetWhy)}" placeholder="写下来，坚持不下去的时候看它一眼" onchange="app.setSavingsField('targetWhy',this.value)"></div>
+          <div class="as-field"><label>目标金额</label><input class="num" id="as_tgt" type="number" step="0.01" min="0" value="${esc(sv.target)}" placeholder="不设则留空" onchange="app.setSavingsField('target',this.value)"></div>
+          <div class="as-field"><label>每月计划存</label><input class="num" id="as_plan" type="number" step="0.01" min="0" value="${esc(sv.monthlyPlan)}" placeholder="留空=按结余" onchange="app.setSavingsField('monthlyPlan',this.value)"></div>
+          <div class="as-field"><label>目标名字</label><input id="as_name" value="${esc(sv.targetName)}" placeholder="选填" onchange="app.setSavingsField('targetName',this.value)"></div>
         </div>
         <div id="assetsSaveDyn"></div>
       </div>
 
       <div class="assets-sec">
         <div class="assets-sec-title">🙋 我欠别人的
-          <span class="sub">还清一笔会小小庆祝一下 · 清账后净资产上升</span>
           <span class="grow"></span>
           <button class="mini-btn ok" onclick="app.addDebt('owe')" title="记一笔我欠别人的钱">＋ 添加</button>
         </div>
         <div class="assets-repay">
-          <span>每月可用于还债 / 存款的预算</span>
+          <span>每月可还</span>
           <input id="as_repay" type="number" step="0.01" min="0" value="${esc(this.assets.repayMonthly)}"
-            placeholder="留空 = 自动估算" onchange="app.setRepayMonthly(this.value)">
+            placeholder="留空=自动估算" onchange="app.setRepayMonthly(this.value)">
           <span style="font-size:11px;opacity:.75;" id="assetsRepayHint"></span>
         </div>
-        ${(activeOwes.length || doneOwes.length) ? [...activeOwes, ...doneOwes].map(d => debtRow(d, true)).join('') : '<div class="assets-empty">还没有欠款记录。如果借了花呗、信用卡或亲戚的钱，先记下来，看着它一点点还清会很安心 🌱</div>'}
+        ${(activeOwes.length || doneOwes.length) ? [...activeOwes, ...doneOwes].map(d => debtRow(d, true)).join('') : '<div class="assets-empty">暂无记录</div>'}
         <div id="assetsOweDyn"></div>
       </div>
 
       <div class="assets-sec">
         <div class="assets-sec-title">🤝 别人欠我的
-          <span class="sub">登记一下，心里有数 · 不收利息就不填利率</span>
           <span class="grow"></span>
           <button class="mini-btn ok" onclick="app.addDebt('receive')" title="记一笔别人欠我的钱">＋ 添加</button>
         </div>
-        ${(activeRecvs.length || doneRecvs.length) ? [...activeRecvs, ...doneRecvs].map(d => debtRow(d, false)).join('') : '<div class="assets-empty">借出去的钱、垫付没报销的钱，都可以记在这里，提醒自己这笔钱在外面 🤝</div>'}
+        ${(activeRecvs.length || doneRecvs.length) ? [...activeRecvs, ...doneRecvs].map(d => debtRow(d, false)).join('') : '<div class="assets-empty">暂无记录</div>'}
         <div id="assetsRecvDyn"></div>
       </div>
-
-      <div class="assets-comply">以上为按当前收支的算术估算，不构成任何投资或理财建议。数字会随你的记账自动更新，随时回来看看。</div>
     `;
     this.refreshAssetsDyn();
   }
@@ -3138,16 +3130,16 @@ class LedgerApp {
           <span style="font-size:11px;color:var(--ink-2);white-space:nowrap;">${pct.toFixed(0)}%</span>
         </div>`;
       const p = this._savePlan();
-      if (p.achieved) saveDyn += `<div class="assets-proj done"><span class="proj-big">🎉 目标已经达成！</span><div>要不要把目标再往上调一档，或者给自己一点奖励？</div></div>`;
+      if (p.achieved) saveDyn += `<div class="assets-proj done"><span class="proj-big">🎉 目标已达成</span></div>`;
       else if (p.monthly > 0) {
         const label = this._monthLabel(p.months);
-        saveDyn += `<div class="assets-proj"><span class="proj-big">预计 ${label} 达标</span><div>按每月能存 ¥${p.monthly.toFixed(0)}，还差 ${(tgt - cur).toFixed(0)}。</div><div class="proj-note">${this._tone(p.months, 'save')}</div></div>`;
+        saveDyn += `<div class="assets-proj"><span class="proj-big">预计 ${label} 达标</span><div>每月存 ¥${p.monthly.toFixed(0)}，还差 ¥${(tgt - cur).toFixed(0)}</div></div>`;
       } else {
-        saveDyn += `<div class="assets-proj hug"><div>${this._tone(null, 'save')}</div><div class="proj-note">可以手动填一个「每月计划存」金额，帮你推演得更准。</div></div>`;
+        saveDyn += `<div class="assets-proj hug"><div>填「每月计划存」后可估算达标时间</div></div>`;
       }
     }
     if (sv.targetName) {
-      saveDyn += `<div class="assets-empty">🎯 目标：${esc(sv.targetName)}${sv.targetWhy ? ' — ' + esc(sv.targetWhy) : ''}</div>`;
+      saveDyn += `<div class="assets-empty">🎯 ${esc(sv.targetName)}${sv.targetWhy ? ' — ' + esc(sv.targetWhy) : ''}</div>`;
     }
     const sdEl = document.getElementById('assetsSaveDyn');
     if (sdEl) sdEl.innerHTML = saveDyn;
@@ -3156,10 +3148,10 @@ class LedgerApp {
     const budget = this._monthlyBudget();
     const hintEl = document.getElementById('assetsRepayHint');
     if (hintEl) {
-      if (this._assetNum(this.assets.repayMonthly) > 0) hintEl.innerHTML = '已用手填预算';
-      else if (budget === null) hintEl.innerHTML = '近3月暂无结余记录，请手填预算';
-      else if (budget > 0) hintEl.innerHTML = `当前按近3月平均结余 ≈ ¥${budget.toFixed(0)}/月 估算`;
-      else hintEl.innerHTML = '近3月平均结余 ≤ 0，建议手填一个现实预算';
+      if (this._assetNum(this.assets.repayMonthly) > 0) hintEl.innerHTML = '手填';
+      else if (budget === null) hintEl.innerHTML = '待填';
+      else if (budget > 0) hintEl.innerHTML = `≈ ¥${budget.toFixed(0)}/月`;
+      else hintEl.innerHTML = '待填';
     }
 
     // ── 还款推演 ──
@@ -3169,23 +3161,18 @@ class LedgerApp {
     let oweDyn = '';
     if (activeOwes.length) {
       const plan = this._owePlan();
-      if (plan && plan.noBudget) {
-        oweDyn = `<div class="assets-proj hug"><div>${this._tone(null, 'owe')}</div>
-          <div class="proj-note">在下方填一个「每月可用于还款」的预算，就能推演出大概多久还完。</div></div>`;
-      } else if (plan && plan.impossible) {
-        oweDyn = `<div class="assets-proj hug"><div>按现在的预算，利息跑得比还得快，这条路走不通。这不是你的错——先试试把利率高的那笔优先处理，或提高每月预算。</div></div>`;
+      if (plan && (plan.noBudget || plan.impossible)) {
+        oweDyn = `<div class="assets-proj hug"><div>${plan.impossible ? '当前预算还不上利息' : '填「每月可还」后可估算还清时间'}</div></div>`;
       } else if (plan) {
         const steps = plan.per.map((p, i) => {
           const who = esc(p.name) || `第${i + 1}笔`;
-          return `<div>${i + 1}. ${who} → ${this._monthLabel(p.months)} 还清</div>`;
+          return `<div>${i + 1}. ${who} → ${this._monthLabel(p.months)}</div>`;
         }).join('');
         const total = this._monthLabel(plan.totalMonths);
         oweDyn = `
           <div class="assets-proj">
-            <span class="proj-big">${doneOwes.length ? '剩余欠款' : '全部欠款'} 预计 ${total} 还清</span>
-            <div>按每月能腾出 ¥${plan.monthly.toFixed(0)}（先清最小一笔，心理学上更容易坚持）</div>
+            <span class="proj-big">${doneOwes.length ? '剩余' : '全部'}预计 ${total} 还清</span>
             <div style="margin-top:4px;">${steps}</div>
-            <div class="proj-note">${this._tone(plan.totalMonths, 'owe')}</div>
           </div>`;
       }
     }
@@ -3198,9 +3185,7 @@ class LedgerApp {
     if (activeRecvs.length) {
       const totalRecv = activeRecvs.reduce((s, d) => s + this._assetNum(d.amount), 0);
       recvDyn = `<div class="assets-proj" style="background:linear-gradient(135deg,#EFF7F3,#fff);border-color:var(--mint);">
-        <span class="proj-big">还有 ¥${totalRecv.toFixed(2)} 在外面（${activeRecvs.length} 笔）</span>
-        <div>这笔钱要等对方还，不需要动用你的结余。可以配合「提醒与待办 → 应收回款」到期问一问 🤝</div>
-        <div class="proj-note">收回来的钱记得加到「当前存款」，净资产会同步上升。</div>
+        <span class="proj-big">¥${totalRecv.toFixed(2)} 未收回（${activeRecvs.length} 笔）</span>
       </div>`;
     }
     const rdEl = document.getElementById('assetsRecvDyn');
