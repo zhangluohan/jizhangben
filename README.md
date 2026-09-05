@@ -5,7 +5,7 @@
 >
 > **双部署分工（老妹 2026-09-02 拍板）**：
 > - **CloudBase = 家人真正使用的入口**（国内快、代码不公开）—— ✅ 已于 2026-09-03 上线
-> - **GitHub Pages = 代码备份 / 开源存档**—— ⏳ 待老妹给 Token
+> - **GitHub Pages = 代码备份 / 开源存档**—— ✅ 已于 2026-09-05 上线（公开仓库 zhangluohan/jizhangben）
 
 ---
 
@@ -79,12 +79,44 @@ node $CLI hosting list -e $ENV    # 查看线上文件列表
 
 ---
 
-## 四、GitHub Pages（备份腿，待办）
+## 四、GitHub Pages（备份腿，已上线）
 
-- 状态：⏳ 等老妹提供 GitHub Personal Access Token（勾 `repo`，有效期 7 天）
-- 生成路径：GitHub 头像 → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token
-- 拿到后我会建公开仓库、推代码、开 Pages，链接形如 `https://<用户名>.github.io/<仓库名>/`
-- 该链接日常不用（国内访问慢、爱缓存旧版），只当**代码存档 + 异地备份**
+| 项目 | 值 |
+|---|---|
+| **仓库** | https://github.com/zhangluohan/jizhangben（公开） |
+| **Pages 地址** | **https://zhangluohan.github.io/jizhangben/** |
+| 上线时间 | 2026-09-05（v8.11） |
+| 费用 | 0 元（公开仓库 + Pages 免费） |
+
+- **用途**：代码存档 + 异地备份。家人日常使用走 CloudBase 链接（国内快）。
+- ⚠️ GitHub Pages 有 CDN 缓存，改版后可能需要几分钟到半小时才生效；强刷可加 `?v=数字` 参数。
+- **更新方法**：本地发布 README 修改后，重复"更新版本"里的上传命令（用 GitHub Contents API，见下）。
+
+### GitHub 仓库更新命令（Contents API，绕过 git 协议）
+
+> 背景：国内网络下 `git push` 到 github.com 不稳定，且沙箱代理会破坏 PUT 长请求体。
+> 已验证的可靠姿势：**curl 直连（--noproxy）+ --data-binary @payload 文件**。
+
+```bash
+TOKEN=$(cat "/Users/wap/Desktop/账号密码/git.md" | tr -d '[:space:]')   # 老妹的 Token 存于此
+API="https://api.github.com/repos/zhangluohan/jizhangben/contents"
+
+# 上传/更新单文件（payload 由 node 生成，避免 shell 转义问题）
+node -e "const fs=require('fs');const f=fs.readFileSync('index.html').toString('base64');
+fs.writeFileSync('/tmp/p.json',JSON.stringify({message:'update v8.12',content:f,branch:'main'}))"
+curl -s --noproxy '*' -X PUT -H "Authorization: token $TOKEN" \
+  -H "Accept: application/vnd.github+json" --data-binary @/tmp/p.json "$API/index.html"
+```
+
+- **新增文件**：直接 PUT（不带 sha）→ 期望 `201`
+- **覆盖已有文件**：先 `GET $API/<文件>` 取 `sha`，PUT 时带上 `"sha":"..."` → 期望 `200`
+- **删除文件**：`-X DELETE`，body 带 `{"message":"...","sha":"..."}` → 期望 `200`
+- 完成后 Pages 自动重新构建（约 1-2 分钟），构建状态查 `GET https://api.github.com/repos/zhangluohan/jizhangben/pages`（`status: built/deployed`）
+
+### Token 安全提醒
+
+- 老妹生成的 Token 权限是**全量**（含 admin、delete_repo），务必**用完即撤销**：GitHub → Settings → Developer settings → Personal access tokens → 对应 Token → Delete。
+- 下次需要更新时再重新生成（建议只勾 `repo`，有效期 7 天），存回 `~/Desktop/账号密码/git.md`。
 
 ---
 
