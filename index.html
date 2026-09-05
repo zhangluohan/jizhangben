@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" data-page-node-id="nBIXcveSvMM948Cmx9Q3oa">
 <title>📒 月记账本</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Ctext%20x='16'%20y='24'%20font-size='24'%20text-anchor='middle'%3E%F0%9F%93%92%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#4FAE91">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="记账本">
 <!-- html2canvas 改为按需懒加载（见 saveReceipt / _loadHtml2Canvas），避免打开页面时因外网 CDN 阻塞而白屏 -->
 <style>
 :root {
@@ -4470,6 +4476,21 @@ class LedgerApp {
 const app = new LedgerApp();
 // Check budget on load if viewing current month
 setTimeout(() => app.checkDailyBudget(), 800);
+
+// ── PWA：仅 https / localhost 下注册 Service Worker（本地 file:// 不生效）───
+if (('serviceWorker' in navigator) && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // 检测到更新时立即接管（不用用户关闭所有 tab）
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => { if (sw.state === 'installed' && navigator.serviceWorker.controller) sw.postMessage({type:'SKIP_WAITING'}); });
+      });
+      console.log('[PWA] Service Worker 已注册，作用域:', reg.scope);
+    }).catch(err => console.warn('[PWA] Service Worker 注册失败:', err.message));
+  });
+}
 </script>
 </body>
 </html>
