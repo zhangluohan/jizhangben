@@ -1652,7 +1652,7 @@ class LedgerApp {
     const el = document.getElementById('incomeTotal');
     if (!el) return;
     const net = this.getNetIncome();
-    el.innerHTML = `<span class="bt-label">💰 收入合计</span><span class="bt-value">¥${net.toFixed(2)}</span>`;
+    el.innerHTML = `<span class="bt-label">💰 收入合计</span><span class="bt-value">¥${this._money(net)}</span>`;
   }
 
   // ── Calculations ──
@@ -1736,7 +1736,7 @@ class LedgerApp {
     const el = document.getElementById(`rowTotal_${day}`);
     if (!el) return;
     const total = this.getDayTotal(day);
-    el.textContent = total ? total.toFixed(2) : '';
+    el.textContent = total ? this._money(total) : '';
   }
 
   updateNoSpendRow(day) {
@@ -2166,7 +2166,7 @@ class LedgerApp {
     html += `
       <div class="analytics-total">
         <span>合计（${months.length}个月 · ${activeMonths}个月有花销）</span>
-        <span class="val">¥${grandTotal.toFixed(2)}</span>
+        <span class="val">¥${this._money(grandTotal)}</span>
       </div>
       <div class="analytics-meta">
         ${months.map(m => `${m.year}/${m.month}`).join(' · ')}
@@ -2260,7 +2260,7 @@ class LedgerApp {
     if (!el) return;
     let total = 0;
     this.columns.forEach(c => { total += parseFloat(c.budget) || 0; });
-    el.innerHTML = `<span class="bt-label">📊 本月总预算</span><span class="bt-value">¥${total.toFixed(2)}</span>`;
+    el.innerHTML = `<span class="bt-label">📊 本月总预算</span><span class="bt-value">¥${this._money(total)}</span>`;
   }
 
   _escapeHtml(str) {
@@ -2483,7 +2483,7 @@ class LedgerApp {
         return v && v !== '';
       });
       const hasNotes = this.cellNotes[String(d)] && Object.keys(this.cellNotes[String(d)]).length > 0;
-      tbody += `<td class="row-total" id="rowTotal_${d}">${dayTotal ? dayTotal.toFixed(2) : ''}</td>`;
+      tbody += `<td class="row-total" id="rowTotal_${d}">${dayTotal ? this._money(dayTotal) : ''}</td>`;
       tbody += `<td><button class="quick-entry-btn${hasData ? ' has-data' : ''}" onclick="app.openDayEntry(${d})">${hasData ? (hasNotes ? '📝' : '✏️') : '+'} 快录</button></td>`;
       tbody += '</tr>';
     }
@@ -2493,10 +2493,10 @@ class LedgerApp {
     let tfoot = '<tfoot><tr class="totals-row"><td>合计</td>';
     this.columns.forEach(c => {
       const total = this.getColTotal(c.key);
-      tfoot += `<td class="total-val">${total ? total.toFixed(2) : '0'}</td>`;
+      tfoot += `<td class="total-val">${total ? this._money(total) : '0'}</td>`;
     });
     const grandTotal = this.getGrandTotal();
-    tfoot += `<td class="total-val">${grandTotal.toFixed(2)}</td><td></td>`;
+    tfoot += `<td class="total-val">${this._money(grandTotal)}</td><td></td>`;
     tfoot += '</tr></tfoot>';
 
     container.innerHTML = `<div class="table-wrap"><table>${thead}${tbody}${tfoot}</table></div>`;
@@ -2614,7 +2614,7 @@ class LedgerApp {
       const amtCls = meta.direction === 'out' ? 'out' : (meta.direction === 'in' ? 'in' : '');
       const amtVal = parseFloat(t.amount);
       const amtTxt = (!isNaN(amtVal) && amtVal > 0)
-        ? `<span class="todo-amount ${amtCls}">${meta.direction === 'out' ? '-' : '+'}¥${amtVal.toFixed(2)}</span>` : '';
+        ? `<span class="todo-amount ${amtCls}">${meta.direction === 'out' ? '-' : '+'}¥${this._money(amtVal)}</span>` : '';
 
       html += `
         <div class="todo-item ${agingCls}">
@@ -2678,12 +2678,12 @@ class LedgerApp {
             <option value="recurring"${mode === 'recurring' ? ' selected' : ''}>每月固定日（如还款/发薪）</option>
             <option value="once"${mode === 'once' ? ' selected' : ''}>一次性（具体日期）</option>
           </select>
-          <input id="tf_day" type="number" min="1" max="31" placeholder="几号"
+          <input id="tf_day" type="number" min="1" max="31" placeholder="几号" onfocus="app.numFocus(this)"
             value="${t && t.recurring ? t.recurring.dayOfMonth : ''}"
             style="width:80px;display:${mode === 'recurring' ? '' : 'none'};">
           <input id="tf_date" type="date" value="${t && t.dueDate ? t.dueDate : ''}"
             style="display:${mode === 'once' ? '' : 'none'};">
-          <input id="tf_remind" type="number" min="0" max="30" placeholder="提前几天"
+          <input id="tf_remind" type="number" min="0" max="30" placeholder="提前几天" onfocus="app.numFocus(this)"
             value="${t && t.remindDays != null ? t.remindDays : 3}" style="width:100px;" title="提前几天开始提醒">
         </div>
         <div class="todo-form-row">
@@ -2826,7 +2826,7 @@ class LedgerApp {
     active.forEach(t => {
       const meta = TODO_TYPES[t.type] || TODO_TYPES.verify;
       const amt  = parseFloat(t.amount);
-      const amtTxt = (!isNaN(amt) && amt > 0) ? ` ${meta.direction === 'out' ? '-' : '+'}¥${amt.toFixed(2)}` : '';
+      const amtTxt = (!isNaN(amt) && amt > 0) ? ` ${meta.direction === 'out' ? '-' : '+'}¥${this._money(amt)}` : '';
       const summary = esc(`${meta.icon} ${t.title}${amtTxt}`);
       const desc = esc([t.nextAction, t.voucher ? `凭证：${t.voucher}` : ''].filter(Boolean).join(' / '));
 
@@ -2939,8 +2939,8 @@ class LedgerApp {
     const hasAny = sv !== 0 || owe !== 0 || recv !== 0;
     const net = sv + recv - owe;
     el.innerHTML = hasAny
-      ? `<span class="bt-label">🏦 净资产</span><span class="bt-value" style="color:${net < 0 ? 'var(--danger)' : 'var(--mint-dark)'};">¥${net.toFixed(2)}</span>`
-      : `<span class="bt-label">🏦 净资产</span><span class="bt-value">¥0.00</span>`;
+      ? `<span class="bt-label">🏦 净资产</span><span class="bt-value" style="color:${net < 0 ? 'var(--danger)' : 'var(--mint-dark)'};">¥${this._money(net)}</span>`
+      : `<span class="bt-label">🏦 净资产</span><span class="bt-value">¥0</span>`;
   }
 
   renderAssets() {
@@ -2956,10 +2956,10 @@ class LedgerApp {
     const cell = (label, val, cls) => `<div class="as-cell"><span class="as-label">${label}</span><span class="as-val ${cls || ''}">${val}</span></div>`;
     el.innerHTML = `
       <div class="assets-summary">
-        ${cell('💰 当前存款', sv ? `¥${sv.toFixed(2)}` : '¥0.00', 'mint')}
-        ${cell('🙋 我欠别人的', owe ? `¥${owe.toFixed(2)}` : '¥0.00', owe ? 'coral' : '')}
-        ${cell('🤝 别人欠我的', recv ? `¥${recv.toFixed(2)}` : '¥0.00', recv ? 'mint' : '')}
-        ${cell('🧮 净资产', `¥${net.toFixed(2)}`, net < 0 ? 'coral' : (net > 0 ? 'warn' : ''))}
+        ${cell('💰 当前存款', sv ? `¥${this._money(sv)}` : '¥0', 'mint')}
+        ${cell('🙋 我欠别人的', owe ? `¥${this._money(owe)}` : '¥0', owe ? 'coral' : '')}
+        ${cell('🤝 别人欠我的', recv ? `¥${this._money(recv)}` : '¥0', recv ? 'mint' : '')}
+        ${cell('🧮 净资产', `¥${this._money(net)}`, net < 0 ? 'coral' : (net > 0 ? 'warn' : ''))}
       </div>`;
   }
 
@@ -3251,7 +3251,7 @@ class LedgerApp {
     if (activeRecvs.length) {
       const totalRecv = activeRecvs.reduce((s, d) => s + this._assetNum(d.amount), 0);
       recvDyn = `<div class="assets-proj" style="background:linear-gradient(135deg,#EFF7F3,#fff);border-color:var(--mint);">
-        <span class="proj-big">¥${totalRecv.toFixed(2)} 未收回（${activeRecvs.length} 笔）</span>
+        <span class="proj-big">¥${this._money(totalRecv)} 未收回（${activeRecvs.length} 笔）</span>
       </div>`;
     }
     const rdEl = document.getElementById('assetsRecvDyn');
@@ -3316,9 +3316,9 @@ class LedgerApp {
     const remain = (this.assets.debts || []).filter(x => x.dir === d.dir && !x.cleared).length;
     if (d.dir === 'owe') {
       const oweTotal = (this.assets.debts || []).filter(x => x.dir === 'owe' && !x.cleared).reduce((s, x) => s + this._assetNum(x.amount), 0);
-      this._celebrate('🎉', '这一笔，清了。', `「${this._escapeHtml(who)}」¥${amt.toFixed(2)} 已经还上。<br>你现在还欠 <b>${remain} 笔</b>，不是 ${remain + 1} 笔了。${oweTotal <= 0 ? '<br><b>全部还清了，好样的！</b>' : ''}`);
+      this._celebrate('🎉', '这一笔，清了。', `「${this._escapeHtml(who)}」¥${this._money(amt)} 已经还上。<br>你现在还欠 <b>${remain} 笔</b>，不是 ${remain + 1} 笔了。${oweTotal <= 0 ? '<br><b>全部还清了，好样的！</b>' : ''}`);
     } else {
-      this._celebrate('🤝', '这笔，收回来了。', `「${this._escapeHtml(who)}」¥${amt.toFixed(2)} 已经到账。<br>外面还剩 <b>${remain} 笔</b>应收。记得把这笔钱加到「当前存款」里 🎯`);
+      this._celebrate('🤝', '这笔，收回来了。', `「${this._escapeHtml(who)}」¥${this._money(amt)} 已经到账。<br>外面还剩 <b>${remain} 笔</b>应收。记得把这笔钱加到「当前存款」里 🎯`);
     }
     this.renderAssets();
   }
@@ -3944,9 +3944,9 @@ class LedgerApp {
 
     // 收入 / 支出 / 结余 三行：结余固定放这里，所有视图都显示
     const footer = `<div class="summary-footer">
-        <div class="sf-row"><span>📈 收入合计</span><span class="val income">¥${netIncome.toFixed(2)}</span></div>
-        <div class="sf-row"><span>📉 支出合计</span><span class="val expense">¥${grandTotal.toFixed(2)}</span></div>
-        <div class="sf-row final"><span>💰 本月结余</span><span class="val${balance < 0 ? ' expense' : ''}">¥${balance.toFixed(2)}</span></div>
+        <div class="sf-row"><span>📈 收入合计</span><span class="val income">¥${this._money(netIncome)}</span></div>
+        <div class="sf-row"><span>📉 支出合计</span><span class="val expense">¥${this._money(grandTotal)}</span></div>
+        <div class="sf-row final"><span>💰 本月结余</span><span class="val${balance < 0 ? ' expense' : ''}">¥${this._money(balance)}</span></div>
       </div>`;
 
     el.classList.toggle('summary-fixed', hasData);
@@ -4022,7 +4022,7 @@ class LedgerApp {
     let groups = '';
     items.forEach(it => {
       const cat = cats[it.i];
-      const tip = `${this._escapeHtml(cat.name)}: ¥${cat.value.toFixed(2)}`;
+      const tip = `${this._escapeHtml(cat.name)}: ¥${this._money(cat.value)}`;
       const slice = it.single
         ? `<circle class="donut-slice" data-idx="${it.i}" data-mid="${it.mid}" cx="${cx}" cy="${cy}" r="${(r + inner) / 2}" fill="none" stroke="${it.color}" stroke-width="${r - inner}"><title>${tip}</title></circle>`
         : `<path class="donut-slice" data-idx="${it.i}" data-mid="${it.mid}" d="${it.d}" fill="${it.color}" stroke="#fff" stroke-width="2"><title>${tip}</title></path>`;
@@ -4086,7 +4086,7 @@ class LedgerApp {
       return `<div class="sumbar-row">
         <span class="sumbar-label">${this._escapeHtml(d.name)}</span>
         <div class="sumbar-track"><div class="sumbar-fill" style="width:${pct}%;background:${this._palette(i)}"></div></div>
-        <span class="sumbar-val">¥${d.value.toFixed(2)}</span>
+        <span class="sumbar-val">¥${this._money(d.value)}</span>
         ${overBudget ? '<span class="sumbar-over">⚠️</span>' : ''}
       </div>`;
     }).join('');
@@ -4101,7 +4101,7 @@ class LedgerApp {
       html += `<div class="summary-row">
         <span class="summary-label">${this._escapeHtml(c.name)}</span>
         <span class="summary-val${overBudget ? ' expense' : ''}">
-          ¥${total.toFixed(2)}
+          ¥${this._money(total)}
           ${budget > 0 ? ` <span style="font-size:11px;font-weight:400;color:var(--ink-2);">/ 预算 ¥${budget}</span>` : ''}
           ${overBudget ? ' ⚠️超支' : ''}
         </span>
@@ -4115,13 +4115,13 @@ class LedgerApp {
       const zhangTotal = this.getColTotal(zhangCol.key);
       html += `<div class="summary-row" style="background:var(--mint-soft);border-radius:6px;padding:8px var(--r-sm);">
         <span class="summary-label">📌 ${zhangCol.name} 单独合计</span>
-        <span class="summary-val highlight">¥${zhangTotal.toFixed(2)}</span>
+        <span class="summary-val highlight">¥${this._money(zhangTotal)}</span>
       </div>`;
     }
 
     html += `<div class="summary-row" style="margin-top:8px;">
       <span class="summary-label">📉 总支出</span>
-      <span class="summary-val expense">¥${grandTotal.toFixed(2)}</span>
+      <span class="summary-val expense">¥${this._money(grandTotal)}</span>
     </div>`;
     // 收入 / 扣款项：按各自 +/− 符号展示（结余统一在 footer 显示，避免重复）
     this._getTrackingItems().forEach(it => {
@@ -4130,7 +4130,7 @@ class LedgerApp {
       const color = isMinus ? 'var(--danger)' : 'var(--good)';
       html += `<div class="summary-row">
         <span class="summary-label">${it.icon} ${it.label} <b style="color:${color};">${signChar}</b></span>
-        <span class="summary-val ${isMinus ? 'expense' : 'income'}">${isMinus ? '-' : '+'}¥${it.value.toFixed(2)}</span>
+        <span class="summary-val ${isMinus ? 'expense' : 'income'}">${isMinus ? '-' : '+'}¥${this._money(it.value)}</span>
       </div>`;
     });
     return html;
@@ -4156,7 +4156,7 @@ class LedgerApp {
     let catRows = '';
     this.columns.forEach(c => {
       const total = this.getColTotal(c.key);
-      catRows += `<tr><td class="cat">${this._escapeHtml(c.name)}</td><td class="amt">¥${total.toFixed(2)}</td></tr>`;
+      catRows += `<tr><td class="cat">${this._escapeHtml(c.name)}</td><td class="amt">¥${this._money(total)}</td></tr>`;
     });
 
     const now = new Date();
@@ -4175,14 +4175,14 @@ class LedgerApp {
         <hr class="receipt-divider">
         <table class="receipt-table">
           ${catRows}
-          ${zhangCol ? `<tr class="subtotal-row"><td class="cat">📌 ${zhangCol.name} 小计</td><td class="amt">¥${zhangTotal.toFixed(2)}</td></tr>` : ''}
-          <tr class="total-row"><td class="cat">📉 总支出</td><td class="amt">¥${grandTotal.toFixed(2)}</td></tr>
+          ${zhangCol ? `<tr class="subtotal-row"><td class="cat">📌 ${zhangCol.name} 小计</td><td class="amt">¥${this._money(zhangTotal)}</td></tr>` : ''}
+          <tr class="total-row"><td class="cat">📉 总支出</td><td class="amt">¥${this._money(grandTotal)}</td></tr>
         </table>
         ${noSpendHtml}
         <hr class="receipt-divider">
         <div class="receipt-summary">
-          ${this._getTrackingItems().map(it => `<div class="line"><span>${it.icon} ${it.label} ${it.sign === '-' ? '−' : '＋'}</span><span>${it.sign === '-' ? '-' : '+'}¥${it.value.toFixed(2)}</span></div>`).join('')}
-          <div class="line final"><span>💰 本月结余</span><span class="val">¥${balance.toFixed(2)}</span></div>
+          ${this._getTrackingItems().map(it => `<div class="line"><span>${it.icon} ${it.label} ${it.sign === '-' ? '−' : '＋'}</span><span>${it.sign === '-' ? '-' : '+'}¥${this._money(it.value)}</span></div>`).join('')}
+          <div class="line final"><span>💰 本月结余</span><span class="val">¥${this._money(balance)}</span></div>
         </div>
         <div class="receipt-tear">
           ✂️ ··················<br>
@@ -4484,9 +4484,9 @@ class LedgerApp {
       // Already exceeded total budget
       if (remaining < 0) {
         const msgs = [
-          `醒一醒！${c.name}已经超预算 ¥${Math.abs(remaining).toFixed(0)} 了 🚨`,
+          `醒一醒！${c.name}已经超预算 ¥${this._money(Math.abs(remaining))} 了 🚨`,
           `${c.name}的预算已经炸了，先冷静一下再花钱 💸`,
-          `喂喂喂，${c.name}超支 ¥${Math.abs(remaining).toFixed(0)}，该醒醒了！`,
+          `喂喂喂，${c.name}超支 ¥${this._money(Math.abs(remaining))}，该醒醒了！`,
         ];
         this.showSmartToast(msgs[Math.floor(Math.random() * msgs.length)], 'danger', '🚨');
         return;
@@ -4496,16 +4496,16 @@ class LedgerApp {
       if (todayVal > dailyBudget) {
         if (ctx.isHoliday) {
           const msgs = [
-            `${c.name}今天花了 ¥${todayVal.toFixed(0)}，虽然超了日均 ¥${dailyBudget.toFixed(0)}，但${ctx.festival || '休息日'}嘛，犒劳一下自己应该的 💆`,
-            `${ctx.festival || '放假'}就该好好享受！${c.name}今天 ¥${todayVal.toFixed(0)} 花得值 🌟`,
-            `休息的时候就是要对自己好一点～${c.name} ¥${todayVal.toFixed(0)}，开心就好 ✨`,
+            `${c.name}今天花了 ¥${this._money(todayVal)}，虽然超了日均 ¥${this._money(dailyBudget)}，但${ctx.festival || '休息日'}嘛，犒劳一下自己应该的 💆`,
+            `${ctx.festival || '放假'}就该好好享受！${c.name}今天 ¥${this._money(todayVal)} 花得值 🌟`,
+            `休息的时候就是要对自己好一点～${c.name} ¥${this._money(todayVal)}，开心就好 ✨`,
           ];
           this.showSmartToast(msgs[Math.floor(Math.random() * msgs.length)], 'love', '💆‍♀️');
         } else {
-          const over = (todayVal - dailyBudget).toFixed(0);
+          const over = this._money(todayVal - dailyBudget);
           const msgs = [
-            `${c.name}今天花了 ¥${todayVal.toFixed(0)}，比日均预算多了 ¥${over}，后面几天省着点哟 😉`,
-            `今天${c.name} ¥${todayVal.toFixed(0)} 稍微超了点，日均还剩 ¥${dailyBudget.toFixed(0)}，注意节奏 🎯`,
+            `${c.name}今天花了 ¥${this._money(todayVal)}，比日均预算多了 ¥${over}，后面几天省着点哟 😉`,
+            `今天${c.name} ¥${this._money(todayVal)} 稍微超了点，日均还剩 ¥${this._money(dailyBudget)}，注意节奏 🎯`,
           ];
           this.showSmartToast(msgs[Math.floor(Math.random() * msgs.length)], 'warn', '⚡');
         }
@@ -4515,9 +4515,9 @@ class LedgerApp {
       // Under budget - encourage!
       if (todayVal <= dailyBudget * 0.8 && remainingDays > 1) {
         const msgs = [
-          `太棒了！${c.name}今天只花了 ¥${todayVal.toFixed(0)}，控制在日均 ¥${dailyBudget.toFixed(0)} 以内，继续保持 👏`,
-          `${c.name}今天很克制呢，¥${todayVal.toFixed(0)} 花得漂亮！剩余 ¥${remaining.toFixed(0)} 可以用 ${remainingDays} 天 🌟`,
-          `你是理财小能手！${c.name}今天 ¥${todayVal.toFixed(0)} 省下不少，给自己点个赞 👍`,
+          `太棒了！${c.name}今天只花了 ¥${this._money(todayVal)}，控制在日均 ¥${this._money(dailyBudget)} 以内，继续保持 👏`,
+          `${c.name}今天很克制呢，¥${this._money(todayVal)} 花得漂亮！剩余 ¥${this._money(remaining)} 可以用 ${remainingDays} 天 🌟`,
+          `你是理财小能手！${c.name}今天 ¥${this._money(todayVal)} 省下不少，给自己点个赞 👍`,
         ];
         this.showSmartToast(msgs[Math.floor(Math.random() * msgs.length)], 'info', '🌟');
       }
