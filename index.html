@@ -1662,7 +1662,7 @@ class LedgerApp {
       const v = parseFloat(this.entries[String(d)]?.[colKey]);
       if (!isNaN(v)) sum += v;
     }
-    return sum;
+    return this._round2(sum);   // 分位精度，消除浮点累加误差
   }
 
   getDayTotal(day) {
@@ -1673,13 +1673,13 @@ class LedgerApp {
       const v = parseFloat(row[c.key]);
       if (!isNaN(v)) sum += v;
     });
-    return sum;
+    return this._round2(sum);
   }
 
   getGrandTotal() {
     let sum = 0;
     this.columns.forEach(c => { sum += this.getColTotal(c.key); });
-    return sum;
+    return this._round2(sum);
   }
 
   // 收入/扣款项：来自可增删改的 incomeItems，每项带 +/− 符号（默认加号）
@@ -1795,10 +1795,10 @@ class LedgerApp {
       html += `
         <div class="entry-row">
           <span class="entry-row-label">${this._escapeHtml(c.name)}</span>
-          <input class="entry-row-amount" type="number" step="0.01"
-            id="entry_amt_${c.key}" value="${val}"
+          <input class="entry-row-amount" type="number" step="0.01" inputmode="decimal"
+            id="entry_amt_${c.key}" value="${this._numDisp(val)}"
             placeholder="金额"
-            onfocus="this.select()">
+            onfocus="app.numFocus(this)" onblur="app.numBlur(this)">
           <input class="entry-row-note" type="text"
             id="entry_note_${c.key}" value="${this._escapeHtml(note)}"
             placeholder="备注（选填）">
@@ -2158,8 +2158,8 @@ class LedgerApp {
           <div class="analytics-bar-track">
             <div class="analytics-bar-fill" style="width:${pct}%">${sharePct}%</div>
           </div>
-          <span class="analytics-bar-amount">¥${v.total.toFixed(0)}</span>
-          <span class="analytics-bar-avg">月均¥${(v.total / activeMonths).toFixed(0)}</span>
+          <span class="analytics-bar-amount">¥${this._money(v.total)}</span>
+          <span class="analytics-bar-avg">月均¥${this._money(v.total / activeMonths)}</span>
         </div>`;
     });
 
@@ -2242,9 +2242,10 @@ class LedgerApp {
             placeholder="类别名">
           <div class="budget-item-row">
             <span class="budget-prefix" title="该类别的预算金额">¥</span>
-            <input class="budget-amount-input" type="number" id="budget_${c.key}"
-              value="${c.budget}" step="1" min="0" title="该类别的预算金额"
-              onchange="app.onBudgetChange('${c.key}')">
+            <input class="budget-amount-input" type="number" id="budget_${c.key}" inputmode="decimal"
+              value="${this._numDisp(c.budget)}" step="0.01" min="0" title="该类别的预算金额"
+              onchange="app.onBudgetChange('${c.key}')"
+              onfocus="app.numFocus(this)" onblur="app.numBlur(this)">
           </div>
         </div>
       `;
@@ -2266,6 +2267,70 @@ class LedgerApp {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     数字工具（v8.15）
+     ── 金额精确到分（两位小数），显示智能：整数不带小数，有小数补齐两位
+     ══════════════════════════════════════════════════════════ */
+
+  // 四舍五入到分，消除浮点误差（0.1+0.2=0.30000000000000004 之类）
+  _round2(n) {
+    const v = Number(n);
+    if (!isFinite(v)) return 0;
+    return Math.round((v + Number.EPSILON) * 100) / 100;
+  }
+
+  // 金额显示：12 → "12"；12.3 → "12.30"；12.345 → "12.35"
+  // 整数不显示小数（不啰嗦），有小数一律补齐两位（金额惯例）
+  _money(n) {
+    const v = this._round2(n);
+    if (Object.is(v, -0)) return '0';
+    return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  }
+
+  // 输入框的显示值：0 / 空 / 非数字 一律显示为空（"点上去就是干净的"）
+  _numDisp(v) {
+    if (v == null) return '';
+    const s = String(v).trim();
+    if (s === '') return '';
+    const n = Number(s);
+    if (!isFinite(n) || n === 0) return '';
+    return s;
+  }
+
+  // 聚焦：0 或空 → 清空（可直接输入新值）；有值 → 全选（延迟一拍，避开 mouseup 取消选区）
+  numFocus(el) {
+    if (!el) return;
+    const raw = (el.value || '').trim();
+    if (raw === '' || !isFinite(Number(raw)) || Number(raw) === 0) {
+      el.value = '';
+      return;
+    }
+    setTimeout(() => { try { el.select(); } catch (e) { /* 某些输入框不支持 select */ } }, 0);
+  }
+
+  // 失焦：规范成两位小数并落库（12 → "12"，12.3 → "12.30"，12.345 → "12.35"）
+  numBlur(el) {
+    if (!el) return;
+    const raw = (el.value || '').trim();
+    if (raw === '') { this._fireChange(el); return; }
+    const n = Number(raw);
+    if (!isFinite(n)) { this._fireChange(el); return; }
+    const formatted = n === 0 ? '' : this._money(n);
+    if (formatted !== el.value) el.value = formatted;
+    this._fireChange(el);
+  }
+
+  // 手动触发 change（numBlur 改了值之后让 onchange 保存）
+  _fireChange(el) {
+    try {
+      const ev = new Event('change', { bubbles: true });
+      el.dispatchEvent(ev);
+    } catch (e) {
+      // 老浏览器降级：直接调 onchange
+      if (typeof el.onchange === 'function') el.onchange();
+    }
   }
 
   renderNoSpendBar() {
@@ -2338,7 +2403,7 @@ class LedgerApp {
       if (isNoSpend) {
         content += '<span class="cal-cell-badge">✨零花销</span>';
       } else if (dayTotal > 0) {
-        content += `<span class="cal-cell-amount">¥${dayTotal.toFixed(0)}</span>`;
+        content += `<span class="cal-cell-amount">¥${this._money(dayTotal)}</span>`;
       }
       const noteDot = hasNotes ? '<span class="cal-cell-note-dot"></span>' : '';
       const todayBadge = isToday ? '<span class="cal-cell-today-badge">今天</span>' : '';
@@ -2393,19 +2458,20 @@ class LedgerApp {
 
       this.columns.forEach(c => {
         const val = this.entries[String(d)]?.[c.key] || '';
+        const dispVal = this._numDisp(val);          // 0 视为空（显示与交互一致）
         const budget = c.budget || Infinity;
         const numVal = parseFloat(val);
         const overClass = (!isNaN(numVal) && budget > 0 && numVal > budget) ? ' over-budget' : '';
-        const hasValClass = val !== '' ? ' has-value' : '';
+        const hasValClass = dispVal !== '' ? ' has-value' : '';
         const cellNote = this.cellNotes[String(d)]?.[c.key];
         const noteDot = cellNote ? '<span class="cell-note-dot" title="' + this._escapeHtml(cellNote) + '"></span>' : '';
 
         tbody += `<td>
           <div class="cell-wrap">
-            <input class="cell-input${overClass}${hasValClass}" type="number"
-              id="cell_${d}_${c.key}" value="${val}" step="0.01"
+            <input class="cell-input${overClass}${hasValClass}" type="number" inputmode="decimal"
+              id="cell_${d}_${c.key}" value="${dispVal}" step="0.01"
               onchange="app.onCellChange(${d},'${c.key}')"
-              onfocus="this.select()">
+              onfocus="app.numFocus(this)" onblur="app.numBlur(this)">
             ${noteDot}
           </div>
         </td>`;
@@ -2605,7 +2671,7 @@ class LedgerApp {
         <div class="todo-form-row">
           <input id="tf_title" placeholder="标题，如：花呗还款" value="${t ? this._escapeHtml(t.title) : ''}" style="flex:2;min-width:140px;">
           <select id="tf_type">${typeOpts}</select>
-          <input id="tf_amount" type="number" step="0.01" placeholder="金额" value="${t && t.amount != null ? t.amount : ''}" style="width:100px;">
+          <input id="tf_amount" type="number" step="0.01" inputmode="decimal" placeholder="金额" value="${this._numDisp(t && t.amount != null ? t.amount : '')}" style="width:100px;" onfocus="app.numFocus(this)" onblur="app.numBlur(this)">
         </div>
         <div class="todo-form-row">
           <select id="tf_mode" onchange="document.getElementById('tf_day').style.display = this.value==='recurring'?'':'none'; document.getElementById('tf_date').style.display = this.value==='once'?'':'none';">
@@ -3046,10 +3112,10 @@ class LedgerApp {
         <span class="tag ${isOwe ? 'owe' : 'recv'}">${isOwe ? '🙋 我欠' : '🤝 欠我'}</span>
         <input class="name" id="as_dname_${d.id}" value="${esc(d.name)}" placeholder="${isOwe ? '欠谁 / 哪张卡' : '谁欠的 / 什么事'}"
           onchange="app.setDebtField('${d.id}','name',this.value)">
-        <input class="num" id="as_damt_${d.id}" type="number" step="0.01" value="${esc(d.amount)}" placeholder="金额"
-          onchange="app.setDebtField('${d.id}','amount',this.value)">
-        ${isOwe && !d.cleared ? `<input class="num" id="as_drate_${d.id}" type="number" step="0.01" min="0" value="${esc(d.rate)}" placeholder="年利率%" title="年利率（%，可留空=无息估算）"
-          onchange="app.setDebtField('${d.id}','rate',this.value)" style="width:88px;">` : ''}
+        <input class="num" id="as_damt_${d.id}" type="number" step="0.01" inputmode="decimal" value="${this._numDisp(d.amount)}" placeholder="金额"
+          onchange="app.setDebtField('${d.id}','amount',this.value)" onfocus="app.numFocus(this)" onblur="app.numBlur(this)">
+        ${isOwe && !d.cleared ? `<input class="num" id="as_drate_${d.id}" type="number" step="0.01" min="0" inputmode="decimal" value="${this._numDisp(d.rate)}" placeholder="年利率%" title="年利率（%，可留空=无息估算）"
+          onchange="app.setDebtField('${d.id}','rate',this.value)" onfocus="app.numFocus(this)" onblur="app.numBlur(this)" style="width:88px;">` : ''}
         ${isOwe && !d.cleared ? '<span style="font-size:10px;color:var(--ink-3);">%</span>' : ''}
         ${d.cleared ? `<span class="done-mark">✔ ${isOwe ? '已还清' : '已收回'} ${esc(d.clearedAt)}</span><span class="grow"></span>` : ''}
         <span class="row-actions">
@@ -3075,9 +3141,9 @@ class LedgerApp {
           <span class="grow"></span>
         </div>
         <div class="assets-save-grid">
-          <div class="as-field"><label>当前存款</label><input class="num" id="as_cur" type="number" step="0.01" min="0" value="${esc(sv.current)}" placeholder="0.00" onchange="app.setSavingsField('current',this.value)"></div>
-          <div class="as-field"><label>目标金额</label><input class="num" id="as_tgt" type="number" step="0.01" min="0" value="${esc(sv.target)}" placeholder="不设则留空" onchange="app.setSavingsField('target',this.value)"></div>
-          <div class="as-field"><label>每月计划存</label><input class="num" id="as_plan" type="number" step="0.01" min="0" value="${esc(sv.monthlyPlan)}" placeholder="留空=按结余" onchange="app.setSavingsField('monthlyPlan',this.value)"></div>
+          <div class="as-field"><label>当前存款</label><input class="num" id="as_cur" type="number" step="0.01" min="0" inputmode="decimal" value="${this._numDisp(sv.current)}" placeholder="0.00" onchange="app.setSavingsField('current',this.value)" onfocus="app.numFocus(this)" onblur="app.numBlur(this)"></div>
+          <div class="as-field"><label>目标金额</label><input class="num" id="as_tgt" type="number" step="0.01" min="0" inputmode="decimal" value="${this._numDisp(sv.target)}" placeholder="不设则留空" onchange="app.setSavingsField('target',this.value)" onfocus="app.numFocus(this)" onblur="app.numBlur(this)"></div>
+          <div class="as-field"><label>每月计划存</label><input class="num" id="as_plan" type="number" step="0.01" min="0" inputmode="decimal" value="${this._numDisp(sv.monthlyPlan)}" placeholder="留空=按结余" onchange="app.setSavingsField('monthlyPlan',this.value)" onfocus="app.numFocus(this)" onblur="app.numBlur(this)"></div>
           <div class="as-field"><label>目标名字</label><input id="as_name" value="${esc(sv.targetName)}" placeholder="选填" onchange="app.setSavingsField('targetName',this.value)"></div>
         </div>
         <div id="assetsSaveDyn"></div>
@@ -3090,8 +3156,8 @@ class LedgerApp {
         </div>
         <div class="assets-repay">
           <span>每月可还</span>
-          <input id="as_repay" type="number" step="0.01" min="0" value="${esc(this.assets.repayMonthly)}"
-            placeholder="留空=自动估算" onchange="app.setRepayMonthly(this.value)">
+          <input id="as_repay" type="number" step="0.01" min="0" inputmode="decimal" value="${this._numDisp(this.assets.repayMonthly)}"
+            placeholder="留空=自动估算" onchange="app.setRepayMonthly(this.value)" onfocus="app.numFocus(this)" onblur="app.numBlur(this)">
           <span style="font-size:11px;opacity:.75;" id="assetsRepayHint"></span>
         </div>
         ${(activeOwes.length || doneOwes.length) ? [...activeOwes, ...doneOwes].map(d => debtRow(d, true)).join('') : '<div class="assets-empty">暂无记录</div>'}
@@ -3123,7 +3189,7 @@ class LedgerApp {
       const pct = Math.min(100, Math.max(0, (cur / tgt) * 100));
       saveDyn += `
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-          <span style="font-size:11px;color:var(--ink-2);white-space:nowrap;">${cur.toFixed(0)} / ${tgt.toFixed(0)}</span>
+          <span style="font-size:11px;color:var(--ink-2);white-space:nowrap;">${this._money(cur)} / ${this._money(tgt)}</span>
           <div style="flex:1;height:10px;background:var(--cream);border-radius:8px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;border-radius:8px;background:linear-gradient(90deg,var(--mint),var(--mint-dark));transition:width .4s;"></div>
           </div>
@@ -3133,7 +3199,7 @@ class LedgerApp {
       if (p.achieved) saveDyn += `<div class="assets-proj done"><span class="proj-big">🎉 目标已达成</span></div>`;
       else if (p.monthly > 0) {
         const label = this._monthLabel(p.months);
-        saveDyn += `<div class="assets-proj"><span class="proj-big">预计 ${label} 达标</span><div>每月存 ¥${p.monthly.toFixed(0)}，还差 ¥${(tgt - cur).toFixed(0)}</div></div>`;
+        saveDyn += `<div class="assets-proj"><span class="proj-big">预计 ${label} 达标</span><div>每月存 ¥${this._money(p.monthly)}，还差 ¥${this._money(tgt - cur)}</div></div>`;
       } else {
         saveDyn += `<div class="assets-proj hug"><div>填「每月计划存」后可估算达标时间</div></div>`;
       }
@@ -3150,7 +3216,7 @@ class LedgerApp {
     if (hintEl) {
       if (this._assetNum(this.assets.repayMonthly) > 0) hintEl.innerHTML = '手填';
       else if (budget === null) hintEl.innerHTML = '待填';
-      else if (budget > 0) hintEl.innerHTML = `≈ ¥${budget.toFixed(0)}/月`;
+      else if (budget > 0) hintEl.innerHTML = `≈ ¥${this._money(budget)}/月`;
       else hintEl.innerHTML = '待填';
     }
 
@@ -3833,9 +3899,10 @@ class LedgerApp {
           <div class="tracking-input-row">
             <button class="sign-btn${isMinus ? ' minus' : ''}" id="sign_${it.id}"
               onclick="app.toggleIncomeSign('${it.id}')" title="点一下切换 加 / 减">${isMinus ? '−' : '＋'}</button>
-            <input type="number" id="incamt_${it.id}" placeholder="0" step="0.01"
-              value="${it.amount != null ? this._escapeHtml(String(it.amount)) : ''}"
-              oninput="app.onIncomeAmountChange('${it.id}')" onchange="app.onIncomeAmountChange('${it.id}')">
+            <input type="number" id="incamt_${it.id}" placeholder="0" step="0.01" inputmode="decimal"
+              value="${this._numDisp(it.amount != null ? String(it.amount) : '')}"
+              oninput="app.onIncomeAmountChange('${it.id}')" onchange="app.onIncomeAmountChange('${it.id}')"
+              onfocus="app.numFocus(this)" onblur="app.numBlur(this)">
           </div>
         </div>`;
     });
@@ -3963,13 +4030,13 @@ class LedgerApp {
       const anchor = it.side === 'right' ? 'end' : 'start';
       const tx = it.lx;
       const label = `<text class="donut-lab" x="${tx.toFixed(1)}" y="${(it.ky0 + 1).toFixed(1)}" text-anchor="${anchor}">
-        <tspan class="donut-lab-name" fill="${it.color}">${this._escapeHtml(cat.name)}</tspan><tspan class="donut-lab-val" dx="5">¥${cat.value.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}</tspan>
+        <tspan class="donut-lab-name" fill="${it.color}">${this._escapeHtml(cat.name)}</tspan><tspan class="donut-lab-val" dx="5">¥${this._money(cat.value)}</tspan>
       </text>`;
       groups += `<g class="donut-item" data-idx="${it.i}" onclick="app.highlightDonut(${it.i})" onmouseenter="app.highlightDonut(${it.i},true)" onmouseleave="app.highlightDonut(-1,true)">${slice}${leader}${label}</g>`;
     });
     const svg = `<svg viewBox="0 0 ${W} ${H}" class="donut" data-active="">
       ${groups}
-      <text x="${cx}" y="${cy - 4}" text-anchor="middle" class="donut-total">¥${grandTotal.toFixed(0)}</text>
+      <text x="${cx}" y="${cy - 4}" text-anchor="middle" class="donut-total">¥${this._money(grandTotal)}</text>
       <text x="${cx}" y="${cy + 14}" text-anchor="middle" class="donut-label">总支出</text>
     </svg>`;
     return `<div class="donut-wrap">${svg}</div>`;
