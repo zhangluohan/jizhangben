@@ -4529,6 +4529,9 @@ const app = new LedgerApp();
 // Check budget on load if viewing current month
 setTimeout(() => app.checkDailyBudget(), 800);
 
+// 暴露到 window：方便真机测试（puppeteer evaluate）与浏览器调试，不影响产品行为
+window.app = app;
+
 // ── PWA：仅 https / localhost 下注册 Service Worker（本地 file:// 不生效）───
 if (('serviceWorker' in navigator) && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
